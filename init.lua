@@ -6,7 +6,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.o`
@@ -80,6 +80,31 @@ vim.o.cursorline = true
 -- Minimal number of screen lines to keep above and below the cursor.
 vim.o.scrolloff = 10
 
+-- Enhanced editor settings for modern experience
+vim.o.termguicolors = true
+vim.o.pumheight = 15
+vim.o.cmdheight = 1
+vim.o.conceallevel = 0
+vim.o.fileencoding = 'utf-8'
+vim.o.hlsearch = true
+vim.o.showtabline = 2
+vim.o.smartindent = true
+vim.o.swapfile = false
+vim.o.backup = false
+vim.o.writebackup = false
+vim.o.expandtab = true
+vim.o.shiftwidth = 2
+vim.o.tabstop = 2
+vim.o.cursorcolumn = false
+vim.o.wrap = false
+vim.o.sidescrolloff = 8
+vim.o.guifont = 'monospace:h17'
+vim.o.title = true
+vim.o.titlestring = '%<%F%=%l/%L - nvim'
+vim.o.shortmess = vim.o.shortmess .. 'c'
+vim.o.whichwrap = 'bs<>[]hl'
+vim.o.iskeyword = vim.o.iskeyword .. ',-'
+
 -- if performing an operation that would fail due to unsaved changes in the buffer (like `:q`),
 -- instead raise a dialog asking if you wish to save the current file(s)
 -- See `:help 'confirm'`
@@ -113,11 +138,37 @@ vim.keymap.set('x', '<leader>p', '"_dp', { noremap = true, silent = true })
 -- or just use <C-\><C-n> to exit terminal mode
 vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
--- TIP: Disable arrow keys in normal mode
-vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
-vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
-vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
-vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
+-- Enhanced navigation and editing keymaps
+vim.keymap.set('n', '<S-l>', ':bnext<CR>', { desc = 'Next buffer' })
+vim.keymap.set('n', '<S-h>', ':bprevious<CR>', { desc = 'Previous buffer' })
+vim.keymap.set('n', '<leader>bd', ':bdelete<CR>', { desc = 'Delete buffer' })
+vim.keymap.set('n', '<leader>ba', ':%bd|e#|bd#<CR>', { desc = 'Delete all buffers except current' })
+
+-- Better indenting
+vim.keymap.set('v', '<', '<gv', { desc = 'Indent left' })
+vim.keymap.set('v', '>', '>gv', { desc = 'Indent right' })
+
+-- Move text up and down
+vim.keymap.set('x', 'J', ":move '>+1<CR>gv-gv", { desc = 'Move selection down' })
+vim.keymap.set('x', 'K', ":move '<-2<CR>gv-gv", { desc = 'Move selection up' })
+vim.keymap.set('x', '<A-j>', ":move '>+1<CR>gv-gv", { desc = 'Move selection down' })
+vim.keymap.set('x', '<A-k>', ":move '<-2<CR>gv-gv", { desc = 'Move selection up' })
+
+-- Better search
+vim.keymap.set('n', '*', '*zzzv', { desc = 'Search forward and center' })
+vim.keymap.set('n', '#', '#zzzv', { desc = 'Search backward and center' })
+
+-- Quick save and quit
+vim.keymap.set('n', '<C-s>', ':w<CR>', { desc = 'Save file' })
+vim.keymap.set('i', '<C-s>', '<ESC>:w<CR>a', { desc = 'Save file in insert mode' })
+vim.keymap.set('n', '<leader>q', ':q<CR>', { desc = 'Quit' })
+vim.keymap.set('n', '<leader>Q', ':qa!<CR>', { desc = 'Force quit all' })
+
+-- Better window resizing
+vim.keymap.set('n', '<C-Up>', ':resize -2<CR>', { desc = 'Resize window up' })
+vim.keymap.set('n', '<C-Down>', ':resize +2<CR>', { desc = 'Resize window down' })
+vim.keymap.set('n', '<C-Left>', ':vertical resize -2<CR>', { desc = 'Resize window left' })
+vim.keymap.set('n', '<C-Right>', ':vertical resize +2<CR>', { desc = 'Resize window right' })
 
 -- Keybinds to make split navigation easier.
 --  Use CTRL+<hjkl> to switch between windows
@@ -137,14 +188,83 @@ vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper win
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
 
--- Highlight when yanking (copying) text
---  Try it with `yap` in normal mode
---  See `:help vim.hl.on_yank()`
+-- Enhanced autocommands for better UX
 vim.api.nvim_create_autocmd('TextYankPost', {
   desc = 'Highlight when yanking (copying) text',
   group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
   callback = function()
-    vim.hl.on_yank()
+    vim.hl.on_yank { higroup = 'Visual', timeout = 200 }
+  end,
+})
+
+-- Auto-resize splits when window is resized
+vim.api.nvim_create_autocmd('VimResized', {
+  desc = 'Resize splits when window is resized',
+  group = vim.api.nvim_create_augroup('auto-resize', { clear = true }),
+  callback = function()
+    vim.cmd 'wincmd ='
+  end,
+})
+
+-- Remove trailing whitespace on save
+vim.api.nvim_create_autocmd('BufWritePre', {
+  desc = 'Remove trailing whitespace on save',
+  group = vim.api.nvim_create_augroup('trim-whitespace', { clear = true }),
+  callback = function()
+    local save_cursor = vim.fn.getpos '.'
+    vim.cmd [[%s/\s\+$//e]]
+    vim.fn.setpos('.', save_cursor)
+  end,
+})
+
+-- Restore cursor position when opening a file
+vim.api.nvim_create_autocmd('BufReadPost', {
+  desc = 'Restore cursor position when opening a file',
+  group = vim.api.nvim_create_augroup('restore-cursor', { clear = true }),
+  callback = function()
+    local mark = vim.api.nvim_buf_get_mark(0, '"')
+    local lcount = vim.api.nvim_buf_line_count(0)
+    if mark[1] > 0 and mark[1] <= lcount then
+      pcall(vim.api.nvim_win_set_cursor, 0, mark)
+    end
+  end,
+})
+
+-- Toggle relative line numbers based on mode and focus
+vim.api.nvim_create_autocmd({ 'BufEnter', 'FocusGained', 'InsertLeave', 'CmdlineLeave', 'WinEnter' }, {
+  desc = 'Enable relative line numbers',
+  group = vim.api.nvim_create_augroup('numbertoggle', { clear = true }),
+  callback = function()
+    if vim.o.nu and vim.api.nvim_get_mode().mode ~= 'i' then
+      vim.opt.relativenumber = true
+    end
+  end,
+})
+
+vim.api.nvim_create_autocmd({ 'BufLeave', 'FocusLost', 'InsertEnter', 'CmdlineEnter', 'WinLeave' }, {
+  desc = 'Disable relative line numbers',
+  group = vim.api.nvim_create_augroup('numbertoggle', { clear = false }),
+  callback = function()
+    if vim.o.nu then
+      vim.opt.relativenumber = false
+    end
+  end,
+})
+
+-- Cursor line only in active window
+vim.api.nvim_create_autocmd({ 'VimEnter', 'WinEnter', 'BufWinEnter' }, {
+  desc = 'Show cursor line in active window',
+  group = vim.api.nvim_create_augroup('cursorline', { clear = true }),
+  callback = function()
+    vim.opt_local.cursorline = true
+  end,
+})
+
+vim.api.nvim_create_autocmd({ 'WinLeave' }, {
+  desc = 'Hide cursor line in inactive window',
+  group = vim.api.nvim_create_augroup('cursorline', { clear = false }),
+  callback = function()
+    vim.opt_local.cursorline = false
   end,
 })
 
@@ -1140,12 +1260,58 @@ end, { desc = 'Harpoon Prev Page' })
 require('oil').setup()
 vim.keymap.set('n', '-', '<CMD>Oil<CR>', { desc = 'Open parent directory' })
 
+-- Enhanced folding with treesitter
 vim.opt.foldmethod = 'expr'
 vim.opt.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
-
 vim.opt.foldtext = ''
-
 vim.opt.foldlevel = 99
-vim.opt.foldlevelstart = 1
+vim.opt.foldlevelstart = 99
+vim.opt.foldnestmax = 4
 
-vim.opt.foldnestmax = 2
+-- Enhanced UI settings
+vim.opt.fillchars = {
+  diff = '╱',
+}
+
+vim.opt.listchars = {
+  tab = '  ',
+  trail = '·',
+  extends = '»',
+  precedes = '«',
+  nbsp = '±',
+}
+
+-- Better completion experience
+vim.opt.completeopt = 'menu,menuone,noselect'
+
+-- Persistent undo
+vim.opt.undofile = true
+vim.opt.undodir = os.getenv 'HOME' .. '/.local/share/nvim/undo'
+
+-- Better diff
+vim.opt.diffopt:append 'algorithm:histogram'
+vim.opt.diffopt:append 'indent-heuristic'
+
+-- Global statusline
+vim.opt.laststatus = 3
+
+-- Performance optimizations
+vim.opt.updatetime = 200
+vim.opt.timeout = true
+vim.opt.timeoutlen = 300
+vim.opt.ttimeoutlen = 0
+
+-- Better mouse support
+vim.opt.mousemodel = 'popup'
+
+-- Spell checking
+vim.opt.spell = false
+vim.opt.spelllang = { 'en_us' }
+
+-- Session management
+vim.opt.sessionoptions = 'blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions'
+
+-- Enhanced grep
+if vim.fn.executable 'rg' == 1 then
+  vim.opt.grepprg = 'rg --vimgrep --smart-case --follow'
+end
