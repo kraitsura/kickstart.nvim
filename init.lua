@@ -1,3 +1,6 @@
+-- Performance: Enable Lua loader for faster startup
+vim.loader.enable()
+
 -- Set <space> as the leader key
 
 -- See `:help mapleader`
@@ -93,8 +96,8 @@ vim.o.swapfile = false
 vim.o.backup = false
 vim.o.writebackup = false
 vim.o.expandtab = true
-vim.o.shiftwidth = 2
-vim.o.tabstop = 2
+vim.o.shiftwidth = 4
+vim.o.tabstop = 4
 vim.o.cursorcolumn = false
 vim.o.wrap = false
 vim.o.sidescrolloff = 8
@@ -193,7 +196,7 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   desc = 'Highlight when yanking (copying) text',
   group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
   callback = function()
-    vim.hl.on_yank { higroup = 'Visual', timeout = 200 }
+    (vim.hl or vim.highlight).on_yank { higroup = 'Visual', timeout = 200 }
   end,
 })
 
@@ -346,10 +349,7 @@ require('lazy').setup({
       'hrsh7th/cmp-cmdline',
     },
   },
-  {
-    'nvim-lualine/lualine.nvim',
-    dependencies = { 'nvim-tree/nvim-web-devicons' },
-  },
+  -- Removed lualine.nvim (using sttusline instead)
   { 'tpope/vim-fugitive' },
   {
     'stevearc/oil.nvim',
@@ -502,9 +502,10 @@ require('lazy').setup({
     'folke/which-key.nvim',
     event = 'VimEnter', -- Sets the loading event to 'VimEnter'
     opts = {
+      preset = 'modern',
       -- delay between pressing a key and opening which-key (milliseconds)
       -- this setting is independent of vim.o.timeoutlen
-      delay = 0,
+      delay = 200,
       icons = {
         -- set icon mappings to true if you have a Nerd Font
         mappings = vim.g.have_nerd_font,
@@ -545,8 +546,11 @@ require('lazy').setup({
       -- Document existing key chains
       spec = {
         { '<leader>s', group = '[S]earch' },
-        { '<leader>t', group = '[T]oggle' },
+        { '<leader>t', group = '[T]oggle/[T]erminal' },
+        { '<leader>l', group = '[L]SP' },
+        { '<leader>g', group = '[G]it' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
+        { '<leader>b', group = '[B]uffer' },
       },
     },
   },
@@ -802,9 +806,9 @@ require('lazy').setup({
           --
           -- This may be unwanted, since they displace some of your code
           if client and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_inlayHint, event.buf) then
-            map('<leader>th', function()
+            map('<leader>lh', function()
               vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf })
-            end, '[T]oggle Inlay [H]ints')
+            end, '[L]SP Inlay [H]ints')
           end
         end,
       })
@@ -882,6 +886,7 @@ require('lazy').setup({
         ts_ls = {},
         pyright = {},
         rust_analyzer = {},
+        gopls = {},
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -917,6 +922,8 @@ require('lazy').setup({
         'prettier', -- Used to format TypeScript/JavaScript
         'black', -- Used to format Python
         'rustfmt', -- Used to format Rust
+        'goimports', -- Used to format and organize Go imports (includes gofmt)
+        'markdownlint-cli2', -- Used to lint Markdown files
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -975,6 +982,7 @@ require('lazy').setup({
         typescriptreact = { 'prettier' },
         python = { 'black' },
         rust = { 'rustfmt' },
+        go = { 'goimports' },
       },
     },
   },
@@ -1121,20 +1129,8 @@ require('lazy').setup({
       -- - sr)'  - [S]urround [R]eplace [)] [']
       require('mini.surround').setup()
 
-      -- Simple and easy statusline.
-      --  You could remove this setup call if you don't like it,
-      --  and try some other statusline plugin
-      local statusline = require 'mini.statusline'
-      -- set use_icons to true if you have a Nerd Font
-      statusline.setup { use_icons = vim.g.have_nerd_font }
-
-      -- You can configure sections in the statusline by overriding their
-      -- default behavior. For example, here we set the section for
-      -- cursor location to LINE:COLUMN
-      ---@diagnostic disable-next-line: duplicate-set-field
-      statusline.section_location = function()
-        return '%2l:%-2v'
-      end
+      -- Statusline is handled by sttusline plugin (configured elsewhere)
+      -- mini.statusline setup removed to avoid conflicts
 
       -- ... and there is more!
       --  Check out: https://github.com/echasnovski/mini.nvim
@@ -1152,6 +1148,7 @@ require('lazy').setup({
         'tsx',
         'python',
         'rust',
+        'go',
         'cpp',
         'bash',
         'c',
@@ -1207,8 +1204,8 @@ require('lazy').setup({
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    This is the easiest way to modularize your config.
   --
-  --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- { import = 'custom.plugins' },
+  --  Custom plugins are now enabled and loaded from lua/custom/plugins/*.lua
+  { import = 'custom.plugins' },
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
   -- Or use telescope!
@@ -1259,6 +1256,21 @@ end, { desc = 'Harpoon Prev Page' })
 
 require('oil').setup()
 vim.keymap.set('n', '-', '<CMD>Oil<CR>', { desc = 'Open parent directory' })
+
+-- Theme switcher - cycle through available colorschemes
+vim.keymap.set('n', '<leader>tt', function()
+  local themes = { 'tokyonight-night', 'terafox', 'cyberdream' }
+  local current = vim.g.colors_name
+  local next_idx = 1
+  for i, theme in ipairs(themes) do
+    if theme == current then
+      next_idx = (i % #themes) + 1
+      break
+    end
+  end
+  vim.cmd('colorscheme ' .. themes[next_idx])
+  print('Switched to: ' .. themes[next_idx])
+end, { desc = 'Toggle Theme', noremap = true, silent = true })
 
 -- Enhanced folding with treesitter
 vim.opt.foldmethod = 'expr'
